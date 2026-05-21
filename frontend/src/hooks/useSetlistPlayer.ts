@@ -3,11 +3,12 @@ import { useApi } from './useApi';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { getSetlistOverrides, saveSetlistOverride } from '../lib/storage';
-import type { Setlist, SetlistEntry } from '../types';
+import type { Setlist, SetlistEntry, Song } from '../types';
 
 interface UseSetlistPlayerOptions {
   setlistId: number | string;
   isPublic?: boolean;
+  isLocal?: boolean;
   initialSetlist?: Setlist;
   initialIndex?: number;
   navigate: (view: string, params?: Record<string, string>) => void;
@@ -17,6 +18,7 @@ interface UseSetlistPlayerOptions {
 export function useSetlistPlayer({
   setlistId,
   isPublic,
+  isLocal,
   initialSetlist,
   initialIndex,
   navigate,
@@ -32,6 +34,92 @@ export function useSetlistPlayer({
   const [savedTransposes, setSavedTransposes] = useState<Record<string, number>>({});
 
   useEffect(() => {
+    if (isLocal) {
+      if (initialSetlist) {
+        const overrides = getSetlistOverrides(initialSetlist.id);
+        const transposes: Record<string, number> = {};
+        const entries = initialSetlist.entries.map((en) => {
+          const ov = overrides[String(en.entry_id)];
+          const transpose = ov?.transpose ?? en.transpose;
+          transposes[String(en.entry_id)] = transpose;
+          return {
+            ...en,
+            transpose,
+          };
+        });
+        setSetlist({
+          ...initialSetlist,
+          entries,
+          isLocal: true,
+        });
+        setSavedTransposes(transposes);
+      } else {
+        // Fallback: load local setlist from storage and fetch song contents
+        import('../lib/storage').then(({ getLocalSetlists }) => {
+          const sl = getLocalSetlists().find((s) => s.id === setlistId);
+          if (!sl) {
+            toast('Local setlist not found', 'error');
+            navigate('local-setlists');
+            return;
+          }
+          const fetches = sl.entries.map((e) =>
+            apiCall<Song>('GET', `/api/songs/${e.song_id}`).catch(() => null)
+          );
+          Promise.all(fetches)
+            .then((results) => {
+              const entries = results
+                .map((song, i) => {
+                  if (!song) return null;
+                  const e = sl.entries[i];
+                  return {
+                    song_id: song.id,
+                    entry_id: `local_${i}`,
+                    title: song.title,
+                    artist: song.artist || '',
+                    content: song.content,
+                    content_override: null,
+                    transpose: e.transpose || 0,
+                    nashville: e.nashville || 0,
+                    bpm: song.bpm || null,
+                    youtube_url: song.youtube_url || null,
+                    language: song.language || 'en',
+                  };
+                })
+                .filter(Boolean) as SetlistEntry[];
+
+              const enriched: Setlist = {
+                id: setlistId,
+                name: sl.name,
+                entries,
+                isLocal: true,
+                visibility: 'private',
+                event_date: null,
+              };
+
+              const overrides = getSetlistOverrides(enriched.id);
+              const transposes: Record<string, number> = {};
+              enriched.entries = enriched.entries.map((en) => {
+                const ov = overrides[String(en.entry_id)];
+                const transpose = ov?.transpose ?? en.transpose;
+                transposes[String(en.entry_id)] = transpose;
+                return {
+                  ...en,
+                  transpose,
+                };
+              });
+
+              setSetlist(enriched);
+              setSavedTransposes(transposes);
+            })
+            .catch((err) => {
+              toast(err.message, 'error');
+              navigate('local-setlists');
+            });
+        });
+      }
+      return;
+    }
+
     const endpoint = isPublic ? `/api/setlists/public/${setlistId}` : `/api/setlists/${setlistId}`;
     apiCall<Setlist>('GET', endpoint)
       .then((sl) => {
@@ -52,7 +140,7 @@ export function useSetlistPlayer({
         setSavedTransposes(transposes);
       })
       .catch((e) => { toast(e.message, 'error'); navigate(user ? 'setlists' : 'browse'); });
-  }, [setlistId, apiCall, isPublic, navigate, toast, user]);
+  }, [setlistId, apiCall, isPublic, isLocal, initialSetlist, navigate, toast, user]);
 
   const entry: SetlistEntry | null = setlist?.entries[index] || null;
   const total = setlist?.entries.length || 0;
