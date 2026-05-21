@@ -11,7 +11,7 @@ import { Toolbar } from '../components/Toolbar';
 import { SettingsPanel } from '../components/SettingsPanel';
 import { Loading } from '../components/Loading';
 import { renderChordPro, getSongKey, clampFontSize, songHasKey, slEffective, autoFit } from '../lib/chords';
-import { normalizeKey, ALL_KEYS, ALL_KEYS_MINOR } from '../lib/keys';
+import { getTransposeDelta } from '../lib/keys';
 import { getStoredFontSize, setStoredFontSize, getStoredTwoCol, setStoredTwoCol } from '../lib/storage';
 import type { Setlist } from '../types';
 
@@ -48,6 +48,7 @@ export function SetlistPlayView({ setlistId, isPublic, isLocal: _isLocal, initia
   const { setlist, entry, index, total, prev, next, exit, updateEntry, isModified, saveOnline, saveLocal } = useSetlistPlayer({
     setlistId,
     isPublic,
+    isLocal: _isLocal,
     initialSetlist,
     initialIndex,
     navigate,
@@ -116,17 +117,11 @@ export function SetlistPlayView({ setlistId, isPublic, isLocal: _isLocal, initia
   // Key picker
   const pickKey = useCallback((targetKey: string) => {
     if (!entry) return;
-    const norm = normalizeKey(getSongKey(content, entry.transpose));
-    if (targetKey === norm) return;
-    const isMinor = norm && norm.endsWith('m') && norm.length > 1;
-    const keys = isMinor ? ALL_KEYS_MINOR : ALL_KEYS;
-    const fromIdx = keys.indexOf(norm);
-    const toIdx = keys.indexOf(targetKey);
-    if (fromIdx === -1 || toIdx === -1) return;
-    let delta = toIdx - fromIdx;
-    if (delta > 6) delta -= 12;
-    if (delta < -6) delta += 12;
-    transpose(delta);
+    const currentKey = getSongKey(content, entry.transpose);
+    const delta = getTransposeDelta(currentKey, targetKey);
+    if (delta !== 0) {
+      transpose(delta);
+    }
   }, [entry, content, transpose]);
 
   // Inline editor

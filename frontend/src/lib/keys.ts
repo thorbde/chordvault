@@ -23,3 +23,22 @@ export function normalizeChord(chord: string): string {
   if (!chord) return chord;
   return chord.replace(/[A-G][b#]?m?/g, (m) => ENHARMONIC_MAP[m] || m);
 }
+
+export function getTransposeDelta(fromKey: string, toKey: string): number {
+  const normFrom = normalizeKey(fromKey);
+  const normTo = normalizeKey(toKey);
+  if (normFrom === normTo) return 0;
+  
+  const isMinor = normFrom && normFrom.endsWith('m') && normFrom.length > 1;
+  const keys = isMinor ? ALL_KEYS_MINOR : ALL_KEYS;
+  
+  const fromIdx = keys.indexOf(normFrom);
+  const toIdx = keys.indexOf(normTo);
+  if (fromIdx === -1 || toIdx === -1) return 0;
+  
+  let delta = toIdx - fromIdx;
+  if (delta > 6) delta -= 12;
+  if (delta < -6) delta += 12;
+  
+  return delta;
+}

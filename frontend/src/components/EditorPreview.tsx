@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect, useRef } from 'react';
 import { renderChordPro, songHasKey } from '../lib/chords';
 import { ChordSheet } from './ChordSheet';
 import { KeyPicker } from './KeyPicker';
-import { ALL_KEYS, ALL_KEYS_MINOR, normalizeKey } from '../lib/keys';
+import { normalizeKey, getTransposeDelta } from '../lib/keys';
 
 interface EditorPreviewProps {
   content: string;
@@ -49,12 +49,7 @@ export function EditorPreview({ content, debounceMs = 300, forceRender }: Editor
   // KeyPicker.onPickKey receives a key string — compute semitone delta from current key
   const handlePickKey = (pickedKey: string) => {
     if (!currentKey) return;
-    const isMinor = currentKey.endsWith('m') && currentKey.length > 1;
-    const keys = isMinor ? ALL_KEYS_MINOR : ALL_KEYS;
-    const fromIdx = keys.indexOf(normalizeKey(currentKey));
-    const toIdx = keys.indexOf(normalizeKey(pickedKey));
-    if (fromIdx === -1 || toIdx === -1) return;
-    setTranspose(toIdx - fromIdx);
+    setTranspose(getTransposeDelta(currentKey, pickedKey));
   };
 
   if (!debouncedContent.trim()) {

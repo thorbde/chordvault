@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { normalizeKey, normalizeChord } from '../keys';
+import { normalizeKey, normalizeChord, getTransposeDelta } from '../keys';
 
 describe('keys library', () => {
   describe('normalizeKey', () => {
@@ -61,6 +61,38 @@ describe('keys library', () => {
 
     it('handles complex suffixes', () => {
       expect(normalizeChord('Abmaj7(#11)')).toBe('G#maj7(#11)');
+    });
+  });
+
+  describe('getTransposeDelta', () => {
+    it('calculates 0 for identical keys', () => {
+      expect(getTransposeDelta('C', 'C')).toBe(0);
+      expect(getTransposeDelta('C#', 'Db')).toBe(0);
+    });
+
+    it('calculates shortest positive distance', () => {
+      expect(getTransposeDelta('C', 'D')).toBe(2);
+      expect(getTransposeDelta('C', 'F#')).toBe(6);
+    });
+
+    it('wraps distances greater than 6 to negative', () => {
+      expect(getTransposeDelta('C', 'G')).toBe(-5);
+      expect(getTransposeDelta('C', 'B')).toBe(-1);
+    });
+
+    it('wraps distances less than -6 to positive', () => {
+      expect(getTransposeDelta('B', 'C')).toBe(1);
+      expect(getTransposeDelta('G', 'C')).toBe(5);
+    });
+
+    it('handles minor keys correctly', () => {
+      expect(getTransposeDelta('Am', 'Dm')).toBe(5);
+      expect(getTransposeDelta('Cm', 'Gm')).toBe(-5);
+    });
+
+    it('returns 0 for invalid keys', () => {
+      expect(getTransposeDelta('H', 'C')).toBe(0);
+      expect(getTransposeDelta('C', 'H')).toBe(0);
     });
   });
 });
