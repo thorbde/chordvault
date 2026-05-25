@@ -1,7 +1,7 @@
 const express = require('express');
 const { requireAuth, optionalAuth, isAdminRole } = require('../lib/auth');
 const { STATUS, VISIBILITY, LIMITS } = require('../lib/constants');
-const { parseId, validateSongInput, validateVisibility, validateLanguage } = require('../lib/validation');
+const { parseId, validateSongInput, validateVisibility, validateLanguage, parsePaginationParams } = require('../lib/validation');
 const { LANGUAGE_CODES } = require('../lib/languages');
 const Song = require('../lib/models/song');
 const User = require('../lib/models/user');
@@ -55,9 +55,10 @@ function createSongsRouter() {
   });
 
   router.get('/songs/public', (req, res) => {
-    const { q, language } = req.query;
+    const { q, language, page, limit } = req.query;
     const userId = req.user ? req.user.id : 0;
-    res.json(Song.listPublic({ q, language, userId }));
+    const { page: pageNum, limit: limitNum } = parsePaginationParams(page, limit);
+    res.json(Song.listPublic({ q, language, userId, page: pageNum, limit: limitNum }));
   });
 
   router.get('/users/:username/songs', (req, res) => {
