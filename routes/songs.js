@@ -49,9 +49,10 @@ function createSongsRouter() {
   const router = express.Router();
 
   router.get('/songs', requireAuth, (req, res) => {
-    const { q, language } = req.query;
+    const { q, language, page, limit } = req.query;
     const userId = req.user.id;
-    res.json(Song.listForUser(userId, { q, language }));
+    const { page: pageNum, limit: limitNum } = parsePaginationParams(page, limit);
+    res.json(Song.listForUser(userId, { q, language, page: pageNum, limit: limitNum }));
   });
 
   router.get('/songs/public', (req, res) => {
@@ -64,7 +65,9 @@ function createSongsRouter() {
   router.get('/users/:username/songs', (req, res) => {
     const user = User.findByUsername(req.params.username);
     if (!user) return res.status(404).json({ error: 'User not found' });
-    const songs = Song.listByUser(user.id);
+    const { page, limit } = req.query;
+    const { page: pageNum, limit: limitNum } = parsePaginationParams(page, limit);
+    const songs = Song.listByUser(user.id, { page: pageNum, limit: limitNum });
     res.json(songs);
   });
 
