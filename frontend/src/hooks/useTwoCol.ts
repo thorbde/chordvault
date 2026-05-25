@@ -39,5 +39,5 @@ export function useTwoCol() {
     setTwoCol(val);
   }, []);
 
-  return { twoCol, toggleTwoCol, setTwoCol, setTwoColTo };
+  return { twoCol, toggleTwoCol, setTwoColTo };
 }
