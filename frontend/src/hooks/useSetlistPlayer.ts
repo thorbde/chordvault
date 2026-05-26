@@ -4,6 +4,7 @@ import { ApiError } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { getSetlistOverrides, saveSetlistOverride } from '../lib/storage';
+import { enrichLocalEntry } from '../lib/setlists';
 import type { Setlist, SetlistEntry, Song } from '../types';
 
 interface UseSetlistPlayerOptions {
@@ -61,7 +62,7 @@ export function useSetlistPlayer({
           const sl = getLocalSetlists().find((s) => s.id === setlistId);
           if (!sl) {
             toast('Local setlist not found', 'error');
-            navigate('local-setlists');
+            navigate('setlists', { tab: 'local' });
             return;
           }
           const fetches = sl.entries.map((e) =>
@@ -70,24 +71,7 @@ export function useSetlistPlayer({
           Promise.all(fetches)
             .then((results) => {
               const entries = results
-                .map((song, i) => {
-                  if (!song) return null;
-                  return {
-                    song_id: song.id,
-                    entry_id: `local_${i}`,
-                    title: song.title,
-                    artist: song.artist || '',
-                    content: song.content,
-                    content_override: null,
-                    transpose: 0,
-                    nashville: 0,
-                    font: null,
-                    two_col: null,
-                    bpm: song.bpm || null,
-                    youtube_url: song.youtube_url || null,
-                    language: song.language || 'en',
-                  };
-                })
+                .map((song, i) => enrichLocalEntry(sl.entries[i], song, i))
                 .filter(Boolean) as SetlistEntry[];
 
               const enriched: Setlist = {
@@ -119,7 +103,7 @@ export function useSetlistPlayer({
             })
             .catch((err) => {
               toast(err.message, 'error');
-              navigate('local-setlists');
+              navigate('setlists', { tab: 'local' });
             });
         });
       }
@@ -245,7 +229,7 @@ export function useSetlistPlayer({
 
   useEffect(() => {
     const onHash = () => {
-      const match = location.hash.match(/^#setlist\/\d+\/play(?:\/(\d+))?$/);
+      const match = location.hash.match(/^#setlist\/(?:local_\w+|\d+)\/play(?:\/(\d+))?$/);
       if (match) {
         const urlIdx = match[1] ? parseInt(match[1]) : 0;
         if (urlIdx !== index) {
@@ -270,7 +254,7 @@ export function useSetlistPlayer({
   }, [index]);
 
   const exit = useCallback(() => {
-    if (setlist?.isLocal) { location.hash = ''; navigate('local-setlists'); }
+    if (setlist?.isLocal) { location.hash = ''; navigate('setlists', { tab: 'local' }); }
     else if (setlist) { navigate('setlist-edit', { id: String(setlist.id) }); }
   }, [setlist, navigate]);
 

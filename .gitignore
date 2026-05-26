@@ -20,3 +20,4 @@ frontend/src/lib/debug-*.ts
 frontend/src/lib/test.html
 scripts/test-*.mjs
 scripts/test-*.png
+scratch/
