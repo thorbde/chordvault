@@ -248,8 +248,7 @@ export function useSetlistPlayer({
   }, [index]);
 
   const exit = useCallback(() => {
-    if (setlist?.isLocal) { location.hash = ''; navigate('setlists', { tab: 'local' }); }
-    else if (setlist) { navigate('setlist-edit', { id: String(setlist.id) }); }
+    if (setlist) { navigate('setlist-edit', { id: String(setlist.id) }); }
   }, [setlist, navigate]);
 
   return { setlist, entry, index, total, goTo, prev, next, exit, updateEntry, isModified, saveOnline, saveLocal };
