@@ -31,7 +31,7 @@ export function AddToSetlistModal({
   const { user } = useAuth();
   const { t } = useI18n();
   const toast = useToast();
-  const ls = useLocalSetlists();
+  const { setlists, addEntry: lsAddEntry, create: lsCreate } = useLocalSetlists();
   const [userSetlists, setUserSetlists] = useState<SetlistListItem[]>([]);
 
   const loadSetlists = useCallback(async () => {
@@ -41,7 +41,7 @@ export function AddToSetlistModal({
         setUserSetlists(sls);
       } catch { /* ignore */ }
     } else {
-      const formatted = ls.setlists.map((sl) => ({
+      const formatted = setlists.map((sl) => ({
         id: sl.id,
         name: sl.name,
         song_count: sl.entries.length,
@@ -50,7 +50,7 @@ export function AddToSetlistModal({
       }));
       setUserSetlists(formatted);
     }
-  }, [user, apiCall, ls]);
+  }, [user, apiCall, setlists]);
 
   useEffect(() => {
     if (isOpen) {
@@ -61,7 +61,7 @@ export function AddToSetlistModal({
   const addToExisting = async (targetId: number | string) => {
     const targetSetlist = userSetlists.find((sl) => sl.id === targetId);
     if (!user) {
-      const added = ls.addEntry(String(targetId), {
+      const added = lsAddEntry(String(targetId), {
         song_id: songId,
         title: songTitle,
         artist: songArtist,
@@ -96,12 +96,12 @@ export function AddToSetlistModal({
     const name = prompt(t('setlist.enterName'));
     if (!name?.trim()) return;
     if (!user) {
-      const sl = ls.create(name.trim());
+      const sl = lsCreate(name.trim());
       if (!sl) {
         toast('Max 50 setlists', 'error');
         return;
       }
-      ls.addEntry(sl.id, {
+      lsAddEntry(sl.id, {
         song_id: songId,
         title: songTitle,
         artist: songArtist,

@@ -22,7 +22,15 @@ export function SetlistEditView({ setlistId, navigate }: SetlistEditViewProps) {
   const { user } = useAuth();
   const { t } = useI18n();
   const toast = useToast();
-  const ls = useLocalSetlists();
+  const {
+    getOne,
+    rename,
+    remove,
+    moveEntry: lsMoveEntry,
+    removeEntry: lsRemoveEntry,
+    addEntry: lsAddEntry,
+    updateEntry: lsUpdateEntry,
+  } = useLocalSetlists();
   
   const isLocal = typeof setlistId === 'string' && setlistId.startsWith('local_');
   const [setlist, setSetlist] = useState<Setlist | null>(null);
@@ -30,7 +38,7 @@ export function SetlistEditView({ setlistId, navigate }: SetlistEditViewProps) {
 
   const load = useCallback(async () => {
     if (isLocal) {
-      const sl = ls.getOne(String(setlistId));
+      const sl = getOne(String(setlistId));
       if (!sl) { navigate(user ? 'setlists' : 'public-setlists'); return; }
       
       const formatted: Setlist = {
@@ -67,7 +75,7 @@ export function SetlistEditView({ setlistId, navigate }: SetlistEditViewProps) {
       toast((e as Error).message, 'error');
       navigate(user ? 'setlists' : 'public-setlists');
     }
-  }, [apiCall, toast, navigate, setlistId, user, isLocal, ls]);
+  }, [apiCall, toast, navigate, setlistId, user, isLocal, getOne]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -78,7 +86,7 @@ export function SetlistEditView({ setlistId, navigate }: SetlistEditViewProps) {
 
     if (isLocal) {
       if (nameInput.length > 200) return;
-      ls.rename(String(setlistId), nameInput);
+      rename(String(setlistId), nameInput);
       setSetlist((prev) => prev ? { ...prev, name: nameInput } : prev);
     } else {
       const vis = (document.getElementById('setlist-visibility') as HTMLInputElement)?.checked ? 'public' : 'private';
@@ -94,7 +102,7 @@ export function SetlistEditView({ setlistId, navigate }: SetlistEditViewProps) {
     if (!confirm(t('setlist.confirmDelete'))) return;
 
     if (isLocal) {
-      ls.remove(String(setlistId));
+      remove(String(setlistId));
       toast(t('setlist.deleted'), 'success');
       location.hash = '';
       navigate(user ? 'setlists' : 'public-setlists');
@@ -112,8 +120,8 @@ export function SetlistEditView({ setlistId, navigate }: SetlistEditViewProps) {
     if (!setlist) return;
 
     if (isLocal) {
-      ls.moveEntry(String(setlistId), idx, dir);
-      const sl = ls.getOne(String(setlistId));
+      lsMoveEntry(String(setlistId), idx, dir);
+      const sl = getOne(String(setlistId));
       if (sl) {
         setSetlist((prev) => prev ? {
           ...prev,
@@ -134,7 +142,7 @@ export function SetlistEditView({ setlistId, navigate }: SetlistEditViewProps) {
 
   const removeEntry = async (entryId: number | string, idx: number) => {
     if (isLocal) {
-      ls.removeEntry(String(setlistId), idx);
+      lsRemoveEntry(String(setlistId), idx);
       setSetlist((prev) => prev ? { ...prev, entries: prev.entries.filter((_, i) => i !== idx) } : prev);
       toast(t('setlist.songRemoved'), 'success');
     } else {
@@ -148,7 +156,7 @@ export function SetlistEditView({ setlistId, navigate }: SetlistEditViewProps) {
 
   const addSong = async (song: SongListItem) => {
     if (isLocal) {
-      const added = ls.addEntry(String(setlistId), {
+      const added = lsAddEntry(String(setlistId), {
         song_id: song.id,
         title: song.title,
         artist: song.artist || '',
@@ -178,7 +186,7 @@ export function SetlistEditView({ setlistId, navigate }: SetlistEditViewProps) {
     const newTranspose = (entry.transpose ?? 0) + delta;
 
     if (isLocal) {
-      ls.updateEntry(String(setlistId), idx, { transpose: newTranspose });
+      lsUpdateEntry(String(setlistId), idx, { transpose: newTranspose });
       setSetlist((prev) => {
         if (!prev) return null;
         const entries = [...prev.entries];
@@ -201,7 +209,7 @@ export function SetlistEditView({ setlistId, navigate }: SetlistEditViewProps) {
   };
 
   const playLocal = async (startIndex = 0) => {
-    const sl = ls.getOne(String(setlistId));
+    const sl = getOne(String(setlistId));
     if (!sl || sl.entries.length === 0) return;
     try {
       const entries = await enrichLocalSetlistSongs(sl.entries, apiCall);
