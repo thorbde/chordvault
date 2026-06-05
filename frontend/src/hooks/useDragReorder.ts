@@ -9,9 +9,18 @@ export function useDragReorder<T>(
   const [canDrag, setCanDrag] = useState(false);
   const currentTouchIdx = useRef<number | null>(null);
 
+  const prevInitialItems = useRef<T[]>(initialItems);
+
   // Sync state if initialItems changes externally (e.g. song added or removed)
   useEffect(() => {
-    setItems(initialItems);
+    const isSame =
+      initialItems.length === prevInitialItems.current.length &&
+      initialItems.every((item, idx) => item === prevInitialItems.current[idx]);
+
+    if (!isSame) {
+      setItems(initialItems);
+    }
+    prevInitialItems.current = initialItems;
   }, [initialItems]);
 
   // HTML5 Drag & Drop (Desktop)
