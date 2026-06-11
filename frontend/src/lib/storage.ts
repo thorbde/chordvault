@@ -77,3 +77,23 @@ export function saveSetlistOverride(
     localStorage.setItem(KEYS.setlistOverrides, JSON.stringify(all));
   } catch (e) { console.error('Failed to save setlist override', e); }
 }
+
+export function getSessionItem(key: string): string | null {
+  try {
+    return sessionStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+export function setSessionItem(key: string, value: string): void {
+  try {
+    sessionStorage.setItem(key, value);
+  } catch {}
+}
+
+export function removeSessionItem(key: string): void {
+  try {
+    sessionStorage.removeItem(key);
+  } catch {}
+}
