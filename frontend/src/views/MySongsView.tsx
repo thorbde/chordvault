@@ -6,6 +6,7 @@ import { SongCard } from '../components/SongCard';
 import { EmptyState } from '../components/EmptyState';
 import { Pagination } from '../components/Pagination';
 import type { SongListItem } from '../types';
+import { getSessionItem, setSessionItem } from '../lib/storage';
 
 interface MySongsViewProps {
   navigate: (view: string, params?: Record<string, string>) => void;
@@ -16,9 +17,12 @@ export function MySongsView({ navigate }: MySongsViewProps) {
   const { t } = useI18n();
   const toast = useToast();
   const [songs, setSongs] = useState<SongListItem[]>([]);
-  const [query, setQuery] = useState('');
+  const [query, setQuery] = useState(() => getSessionItem('cv_mysongs_query') || '');
   const [loaded, setLoaded] = useState(false);
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useState(() => {
+    const saved = getSessionItem('cv_mysongs_page');
+    return saved ? parseInt(saved, 10) : 1;
+  });
   const [totalPages, setTotalPages] = useState(1);
 
   const load = useCallback((q = '', targetPage = 1) => {
@@ -43,11 +47,21 @@ export function MySongsView({ navigate }: MySongsViewProps) {
         setPage(data.page);
         setTotalPages(data.totalPages);
         setLoaded(true);
+        setSessionItem('cv_mysongs_query', q);
+        setSessionItem('cv_mysongs_page', String(data.page));
       })
       .catch((e) => toast(e.message, 'error'));
   }, [api, toast]);
 
-  useEffect(() => { load('', 1); }, [load]);
+  useEffect(() => {
+    load(query, page);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [load]);
+
+  const handleClear = () => {
+    setQuery('');
+    load('', 1);
+  };
 
   const doSearch = () => load(query, 1);
 
@@ -62,13 +76,24 @@ export function MySongsView({ navigate }: MySongsViewProps) {
         <h2 className="view-title">{t('songs.mySongs')}</h2>
       </div>
       <div className="search-row">
-        <input
-          type="search"
-          placeholder={t('songs.searchPlaceholder')}
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          onKeyDown={(e) => { if (e.key === 'Enter') doSearch(); }}
-        />
+        <div className="search-input-wrapper">
+          <input
+            type="search"
+            placeholder={t('songs.searchPlaceholder')}
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') doSearch(); }}
+          />
+          {query && (
+            <button
+              className="search-clear-btn"
+              onClick={handleClear}
+              title="Clear search"
+            >
+              &times;
+            </button>
+          )}
+        </div>
         <button className="btn btn-ghost btn-sm" onClick={doSearch}>{t('songs.search')}</button>
         <button className="btn btn-sm" onClick={() => navigate('song-edit')}>{t('songs.newSong')}</button>
       </div>

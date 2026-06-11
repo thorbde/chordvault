@@ -8,6 +8,7 @@ import { SetlistCard } from '../components/SetlistCard';
 import { EmptyState } from '../components/EmptyState';
 import { Pagination } from '../components/Pagination';
 import type { SetlistListItem } from '../types';
+import { getSessionItem, setSessionItem } from '../lib/storage';
 
 interface SetlistsViewProps {
   navigate: (view: string, params?: Record<string, string>) => void;
@@ -27,11 +28,14 @@ export function SetlistsView({ navigate }: SetlistsViewProps) {
   const [loaded, setLoaded] = useState(false);
   const [showNew, setShowNew] = useState(false);
   const [newName, setNewName] = useState('');
-  const [query, setQuery] = useState('');
-  const [dateFrom, setDateFrom] = useState('');
-  const [dateTo, setDateTo] = useState('');
-  const [showDates, setShowDates] = useState(false);
-  const [page, setPage] = useState(1);
+  const [query, setQuery] = useState(() => getSessionItem('cv_setlists_query') || '');
+  const [dateFrom, setDateFrom] = useState(() => getSessionItem('cv_setlists_date_from') || '');
+  const [dateTo, setDateTo] = useState(() => getSessionItem('cv_setlists_date_to') || '');
+  const [showDates, setShowDates] = useState(() => getSessionItem('cv_setlists_show_dates') === 'true');
+  const [page, setPage] = useState(() => {
+    const saved = getSessionItem('cv_setlists_page');
+    return saved ? parseInt(saved, 10) : 1;
+  });
   const [totalPages, setTotalPages] = useState(1);
   const nameRef = useRef<HTMLInputElement>(null);
 
@@ -57,15 +61,21 @@ export function SetlistsView({ navigate }: SetlistsViewProps) {
       setPage(data.page);
       setTotalPages(data.totalPages);
       setLoaded(true);
+      
+      setSessionItem('cv_setlists_query', q);
+      setSessionItem('cv_setlists_date_from', from);
+      setSessionItem('cv_setlists_date_to', to);
+      setSessionItem('cv_setlists_page', String(data.page));
     } catch (e) { toast((e as Error).message, 'error'); }
   }, [apiCall, toast, user]);
 
   useEffect(() => {
     if (activeTab === 'cloud') {
-      load('', '', '', 1);
+      load(query, dateFrom, dateTo, page);
     } else {
       setLoaded(true);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [load, activeTab]);
 
   useEffect(() => { if (showNew && nameRef.current) nameRef.current.focus(); }, [showNew]);
@@ -85,6 +95,15 @@ export function SetlistsView({ navigate }: SetlistsViewProps) {
         toast(t('setlist.created'), 'success');
         navigate('setlist-edit', { id: String(result.id) });
       } catch (e) { toast((e as Error).message, 'error'); }
+    }
+  };
+
+  const handleClear = () => {
+    setQuery('');
+    if (activeTab === 'local') {
+      setSessionItem('cv_setlists_query', '');
+    } else {
+      load('', dateFrom, dateTo, 1);
     }
   };
 
@@ -135,15 +154,41 @@ export function SetlistsView({ navigate }: SetlistsViewProps) {
         </div>
       )}
       <div className="search-row">
-        <input
-          type="search"
-          placeholder={t('setlist.searchPlaceholder')}
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          onKeyDown={(e) => { if (e.key === 'Enter') handleSearch(); }}
-        />
+        <div className="search-input-wrapper">
+          <input
+            type="search"
+            placeholder={t('setlist.searchPlaceholder')}
+            value={query}
+            onChange={(e) => {
+              const val = e.target.value;
+              setQuery(val);
+              if (activeTab === 'local') {
+                setSessionItem('cv_setlists_query', val);
+              }
+            }}
+            onKeyDown={(e) => { if (e.key === 'Enter') handleSearch(); }}
+          />
+          {query && (
+            <button
+              className="search-clear-btn"
+              onClick={handleClear}
+              title="Clear search"
+            >
+              &times;
+            </button>
+          )}
+        </div>
         {activeTab === 'cloud' && (
-          <button className="btn btn-ghost btn-sm" onClick={() => setShowDates((v) => !v)}>&#128197; Date</button>
+          <button
+            className="btn btn-ghost btn-sm"
+            onClick={() => {
+              const next = !showDates;
+              setShowDates(next);
+              setSessionItem('cv_setlists_show_dates', String(next));
+            }}
+          >
+            &#128197; Date
+          </button>
         )}
         <button className="btn btn-ghost btn-sm" onClick={handleSearch}>{t('songs.search')}</button>
       </div>

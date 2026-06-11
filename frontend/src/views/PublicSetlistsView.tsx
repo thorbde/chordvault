@@ -6,6 +6,7 @@ import { SetlistCard } from '../components/SetlistCard';
 import { EmptyState } from '../components/EmptyState';
 import { Pagination } from '../components/Pagination';
 import type { SetlistListItem } from '../types';
+import { getSessionItem, setSessionItem } from '../lib/storage';
 
 interface PublicSetlistsViewProps {
   navigate: (view: string, params?: Record<string, string>) => void;
@@ -17,11 +18,14 @@ export function PublicSetlistsView({ navigate }: PublicSetlistsViewProps) {
   const toast = useToast();
   const [setlists, setSetlists] = useState<SetlistListItem[]>([]);
   const [loaded, setLoaded] = useState(false);
-  const [query, setQuery] = useState('');
-  const [dateFrom, setDateFrom] = useState('');
-  const [dateTo, setDateTo] = useState('');
-  const [showDates, setShowDates] = useState(false);
-  const [page, setPage] = useState(1);
+  const [query, setQuery] = useState(() => getSessionItem('cv_publicsetlists_query') || '');
+  const [dateFrom, setDateFrom] = useState(() => getSessionItem('cv_publicsetlists_date_from') || '');
+  const [dateTo, setDateTo] = useState(() => getSessionItem('cv_publicsetlists_date_to') || '');
+  const [showDates, setShowDates] = useState(() => getSessionItem('cv_publicsetlists_show_dates') === 'true');
+  const [page, setPage] = useState(() => {
+    const saved = getSessionItem('cv_publicsetlists_page');
+    return saved ? parseInt(saved, 10) : 1;
+  });
   const [totalPages, setTotalPages] = useState(1);
 
   const load = useCallback(async (q = '', from = '', to = '', targetPage = 1) => {
@@ -45,10 +49,23 @@ export function PublicSetlistsView({ navigate }: PublicSetlistsViewProps) {
       setPage(data.page);
       setTotalPages(data.totalPages);
       setLoaded(true);
+      
+      setSessionItem('cv_publicsetlists_query', q);
+      setSessionItem('cv_publicsetlists_date_from', from);
+      setSessionItem('cv_publicsetlists_date_to', to);
+      setSessionItem('cv_publicsetlists_page', String(data.page));
     } catch (e) { toast((e as Error).message, 'error'); }
   }, [apiCall, toast]);
 
-  useEffect(() => { load('', '', '', 1); }, [load]);
+  useEffect(() => {
+    load(query, dateFrom, dateTo, page);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [load]);
+
+  const handleClear = () => {
+    setQuery('');
+    load('', dateFrom, dateTo, 1);
+  };
 
   const handleSearch = () => load(query, dateFrom, dateTo, 1);
 
@@ -71,14 +88,34 @@ export function PublicSetlistsView({ navigate }: PublicSetlistsViewProps) {
       {showSearch && (
         <>
           <div className="search-row">
-            <input
-              type="search"
-              placeholder={t('setlist.searchPlaceholder')}
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') handleSearch(); }}
-            />
-            <button className="btn btn-ghost btn-sm" onClick={() => setShowDates((v) => !v)}>&#128197; Date</button>
+            <div className="search-input-wrapper">
+              <input
+                type="search"
+                placeholder={t('setlist.searchPlaceholder')}
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') handleSearch(); }}
+              />
+              {query && (
+                <button
+                  className="search-clear-btn"
+                  onClick={handleClear}
+                  title="Clear search"
+                >
+                  &times;
+                </button>
+              )}
+            </div>
+            <button
+              className="btn btn-ghost btn-sm"
+              onClick={() => {
+                const next = !showDates;
+                setShowDates(next);
+                setSessionItem('cv_publicsetlists_show_dates', String(next));
+              }}
+            >
+              &#128197; Date
+            </button>
             <button className="btn btn-ghost btn-sm" onClick={handleSearch}>{t('songs.search')}</button>
           </div>
           {showDates && (

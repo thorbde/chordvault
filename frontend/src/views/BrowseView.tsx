@@ -8,6 +8,7 @@ import { EmptyState } from '../components/EmptyState';
 import { Pagination } from '../components/Pagination';
 import type { SongListItem } from '../types';
 import { LANGUAGES } from '../lib/languages';
+import { getSessionItem, setSessionItem } from '../lib/storage';
 
 interface BrowseViewProps {
   navigate: (view: string, params?: Record<string, string>) => void;
@@ -19,11 +20,14 @@ export function BrowseView({ navigate }: BrowseViewProps) {
   const { t } = useI18n();
   const toast = useToast();
   const [songs, setSongs] = useState<SongListItem[]>([]);
-  const [query, setQuery] = useState('');
-  const [langFilter, setLangFilter] = useState('');
-  const [showFilters, setShowFilters] = useState(false);
+  const [query, setQuery] = useState(() => getSessionItem('cv_browse_query') || '');
+  const [langFilter, setLangFilter] = useState(() => getSessionItem('cv_browse_lang') || '');
+  const [showFilters, setShowFilters] = useState(() => getSessionItem('cv_browse_show_filters') === 'true');
   const [loaded, setLoaded] = useState(false);
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useState(() => {
+    const saved = getSessionItem('cv_browse_page');
+    return saved ? parseInt(saved, 10) : 1;
+  });
   const [totalPages, setTotalPages] = useState(1);
 
   const load = useCallback(async (q = '', lang = '', targetPage = 1) => {
@@ -48,10 +52,22 @@ export function BrowseView({ navigate }: BrowseViewProps) {
       setPage(data.page);
       setTotalPages(data.totalPages);
       setLoaded(true);
+      
+      setSessionItem('cv_browse_query', q);
+      setSessionItem('cv_browse_lang', lang);
+      setSessionItem('cv_browse_page', String(data.page));
     } catch (e) { toast((e as Error).message, 'error'); }
   }, [api, toast]);
 
-  useEffect(() => { load('', '', 1); }, [load]);
+  useEffect(() => {
+    load(query, langFilter, page);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [load]);
+
+  const handleClear = () => {
+    setQuery('');
+    load('', langFilter, 1);
+  };
 
   const doSearch = () => load(query, langFilter, 1);
 
@@ -77,17 +93,32 @@ export function BrowseView({ navigate }: BrowseViewProps) {
       ) : (
         <>
           <div className="search-row">
-            <input
-              type="search"
-              placeholder={t('songs.searchPlaceholder')}
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') doSearch(); }}
-            />
+            <div className="search-input-wrapper">
+              <input
+                type="search"
+                placeholder={t('songs.searchPlaceholder')}
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') doSearch(); }}
+              />
+              {query && (
+                <button
+                  className="search-clear-btn"
+                  onClick={handleClear}
+                  title="Clear search"
+                >
+                  &times;
+                </button>
+              )}
+            </div>
             <button className="btn btn-ghost btn-sm" onClick={doSearch}>{t('songs.search')}</button>
             <button
               className={`btn btn-ghost btn-sm${showFilters || langFilter ? ' active' : ''}`}
-              onClick={() => setShowFilters(!showFilters)}
+              onClick={() => {
+                const next = !showFilters;
+                setShowFilters(next);
+                setSessionItem('cv_browse_show_filters', String(next));
+              }}
               title="Filters"
             >
               &#9776;
