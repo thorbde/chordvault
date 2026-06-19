@@ -50,7 +50,7 @@
 
 /* ChordSheetJS output styles */
 .chord-sheet .paragraph {
-  margin-bottom: 1.5em;
+  margin-bottom: 1em;
 }
 
 .chord-sheet .row {
@@ -130,7 +130,7 @@
   border: 1px solid var(--badge-border) !important;
   
   display: inline-block !important;
-  margin: 24px 0 8px !important;
+  margin: 14px 0 4px !important;
 }
 
 /* Chorus Styles */
