@@ -76,6 +76,9 @@ function createSongsRouter({ withSkipGlobal, exportLimiter }) {
       res.destroy(err);
     });
     zip.outputStream.pipe(res);
+    res.on('close', () => {
+      if (!res.writableFinished) zip.outputStream.destroy();
+    });
     const nameFor = makeUniqueNamer();
     for (const row of Song.iterateExportable(req.user.id, isAdmin)) {
       zip.addBuffer(Buffer.from(row.content, 'utf8'), nameFor(row.title, row.id));
