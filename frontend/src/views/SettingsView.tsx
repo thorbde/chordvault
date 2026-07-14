@@ -2,11 +2,14 @@ import { useState, useEffect, useCallback } from 'react';
 import { useApi } from '../hooks/useApi';
 import { LANGUAGES, languageName } from '../lib/languages';
 import { useDemo } from '../context/DemoContext';
+import { useAuth } from '../context/AuthContext';
+import { exportSongsBlob } from '../lib/api';
 import { MAX_PREFERRED_LANGUAGES, MAX_OCR_PROMPT, DEFAULT_GEMINI_MODEL } from '../lib/constants';
 
 export function SettingsView() {
   const apiCall = useApi();
   const { demoMode } = useDemo();
+  const { user } = useAuth();
   const [currentPw, setCurrentPw] = useState('');
   const [newPw, setNewPw] = useState('');
   const [confirmPw, setConfirmPw] = useState('');
@@ -24,6 +27,8 @@ export function SettingsView() {
   const [ocrModel, setOcrModel] = useState(DEFAULT_GEMINI_MODEL);
   const [modelList, setModelList] = useState<{ id: string; label: string; hint: string }[]>([]);
   const [modelMsg, setModelMsg] = useState<{ text: string; color: string } | null>(null);
+  const [exporting, setExporting] = useState(false);
+  const [exportMsg, setExportMsg] = useState<{ text: string; color: string } | null>(null);
 
   const loadPreferredLangs = useCallback(async () => {
     try {
@@ -139,6 +144,27 @@ export function SettingsView() {
       setPreferredLangs(updated);
       setLangMsg({ text: 'Saved', color: 'var(--success)' });
     } catch (e) { setLangMsg({ text: (e as Error).message, color: 'var(--danger)' }); }
+  };
+
+  const handleExport = async () => {
+    if (!user?.token) return;
+    setExporting(true);
+    setExportMsg(null);
+    try {
+      const { blob, filename } = await exportSongsBlob(user.token);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      setExportMsg({ text: (e as Error).message, color: 'var(--danger)' });
+    } finally {
+      setExporting(false);
+    }
   };
 
   return (
@@ -270,6 +296,19 @@ export function SettingsView() {
             </div>
           )}
           {langMsg && <div className="field-message" style={{ color: langMsg.color }}>{langMsg.text}</div>}
+        </div>
+      </div>
+
+      <div className="settings-section">
+        <h3 className="admin-section-title">Export Songs</h3>
+        <p className="muted-hint">
+          Download all songs you can access as ChordPro (.cho) files in a zip.
+        </p>
+        <div className="auth-card" style={{ maxWidth: 400 }}>
+          <button className="btn btn-sm" onClick={handleExport} disabled={exporting}>
+            {exporting ? 'Exporting…' : 'Export Songs'}
+          </button>
+          {exportMsg && <div className="field-message" style={{ color: exportMsg.color }}>{exportMsg.text}</div>}
         </div>
       </div>
     </>
