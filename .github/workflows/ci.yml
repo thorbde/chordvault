@@ -26,6 +26,9 @@ jobs:
       - name: Lint backend
         run: npm run lint
 
+      - name: Unit tests (backend)
+        run: npm test
+
       - name: Lint frontend
         run: cd frontend && npm run lint
 

@@ -1,8 +1,9 @@
 const express = require('express');
-const { requireAuth, optionalAuth, isAdminRole } = require('../lib/auth');
+const { requireAuth, requireAdmin, optionalAuth, isAdminRole } = require('../lib/auth');
 const { STATUS, VISIBILITY, LIMITS } = require('../lib/constants');
 const { parseId, validateSongInput, validateVisibility, validateLanguage, parsePaginationParams } = require('../lib/validation');
 const { LANGUAGE_CODES } = require('../lib/languages');
+const { DEMO_MODE } = require('../lib/demo');
 const Song = require('../lib/models/song');
 const User = require('../lib/models/user');
 
@@ -117,9 +118,12 @@ function createSongsRouter() {
     res.json({ id: result.lastInsertRowid });
   });
 
-  router.post('/songs/import', requireAuth, (req, res) => {
+  router.post('/songs/import', requireAuth, requireAdmin, (req, res) => {
     const { songs } = req.body;
     if (!Array.isArray(songs)) return res.status(400).json({ error: 'Request body must contain a "songs" array' });
+    if (DEMO_MODE && songs.length > LIMITS.DEMO_MAX_IMPORT) {
+      return res.status(400).json({ error: `Demo mode: import limited to ${LIMITS.DEMO_MAX_IMPORT} songs` });
+    }
     if (songs.length > LIMITS.MAX_IMPORT) return res.status(400).json({ error: `Maximum ${LIMITS.MAX_IMPORT} songs per import` });
 
     const errors = [];
@@ -134,6 +138,7 @@ function createSongsRouter() {
       const visError = validateVisibility(s.visibility);
       if (visError) { errors.push({ index: i, error: visError }); return; }
       valid.push({
+        index: i,
         ...meta,
         content: s.content.trim(),
         visibility: s.visibility === VISIBILITY.PRIVATE ? VISIBILITY.PRIVATE : VISIBILITY.PUBLIC,
@@ -141,8 +146,8 @@ function createSongsRouter() {
     });
 
     try {
-      Song.importSongs(req.user.id, valid);
-      res.json({ imported: valid.length, errors });
+      const { imported, skipped } = Song.importSongs(req.user.id, valid);
+      res.json({ imported, skipped, errors });
     } catch (e) {
       console.error('Import failed:', e.message);
       res.status(500).json({ error: 'Import failed. Please check your data and try again.' });

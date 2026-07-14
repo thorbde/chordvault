@@ -3,3 +3,6 @@ npx lint-staged
 
 # Run frontend typecheck and unit tests
 cd frontend && npx tsc --noEmit && npm test
+
+# Run backend unit tests
+cd .. && npm test
