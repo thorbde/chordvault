@@ -19,6 +19,7 @@
     "lint:fix": "eslint . --fix",
     "format": "prettier --write \"*.js\" \"lib/**/*.js\" \"routes/**/*.js\"",
     "format:check": "prettier --check \"*.js\" \"lib/**/*.js\" \"routes/**/*.js\"",
+    "test": "node --test test/*.test.js",
     "prepare": "husky || true"
   },
   "dependencies": {
