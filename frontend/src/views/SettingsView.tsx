@@ -4,12 +4,13 @@ import { LANGUAGES, languageName } from '../lib/languages';
 import { useDemo } from '../context/DemoContext';
 import { useAuth } from '../context/AuthContext';
 import { exportSongsBlob } from '../lib/api';
+import { ImportModal } from '../components/ImportModal';
 import { MAX_PREFERRED_LANGUAGES, MAX_OCR_PROMPT, DEFAULT_GEMINI_MODEL } from '../lib/constants';
 
 export function SettingsView() {
   const apiCall = useApi();
   const { demoMode } = useDemo();
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const [currentPw, setCurrentPw] = useState('');
   const [newPw, setNewPw] = useState('');
   const [confirmPw, setConfirmPw] = useState('');
@@ -29,6 +30,7 @@ export function SettingsView() {
   const [modelMsg, setModelMsg] = useState<{ text: string; color: string } | null>(null);
   const [exporting, setExporting] = useState(false);
   const [exportMsg, setExportMsg] = useState<{ text: string; color: string } | null>(null);
+  const [showImport, setShowImport] = useState(false);
 
   const loadPreferredLangs = useCallback(async () => {
     try {
@@ -300,16 +302,25 @@ export function SettingsView() {
       </div>
 
       <div className="settings-section">
-        <h3 className="admin-section-title">Export Songs</h3>
+        <h3 className="admin-section-title">{isAdmin ? 'Import & Export' : 'Export Songs'}</h3>
         <p className="muted-hint">
           Download all songs you can access as ChordPro (.cho) files in a zip.
+          {isAdmin ? ' As an admin, you can also bulk import ChordPro files into the library.' : ''}
         </p>
         <div className="auth-card" style={{ maxWidth: 400 }}>
-          <button className="btn btn-sm" onClick={handleExport} disabled={exporting}>
-            {exporting ? 'Exporting…' : 'Export Songs'}
-          </button>
+          <div className="flex-row" style={{ flexWrap: 'wrap' }}>
+            {isAdmin && (
+              <button className="btn btn-sm" onClick={() => setShowImport(true)}>Import Songs</button>
+            )}
+            <button className="btn btn-sm" onClick={handleExport} disabled={exporting}>
+              {exporting ? 'Exporting…' : 'Export Songs'}
+            </button>
+          </div>
           {exportMsg && <div className="field-message" style={{ color: exportMsg.color }}>{exportMsg.text}</div>}
         </div>
+        {showImport && (
+          <ImportModal onClose={() => setShowImport(false)} onDone={() => {}} />
+        )}
       </div>
     </>
   );
